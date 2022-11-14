@@ -5,12 +5,14 @@ when defined(windows):
   const
     ogldll* = "OpenGL32.dll"
     gludll* = "GLU32.dll"
+
 elif defined(macosx):
   #macosx has this notion of a framework, thus the path to the openGL dylib files
   #is absolute
   const
     ogldll* = "/System/Library/Frameworks/OpenGL.framework/Versions/Current/Libraries/libGL.dylib"
     gludll* = "/System/Library/Frameworks/OpenGL.framework/Versions/Current/Libraries/libGLU.dylib"
+
 else:
   const
     ogldll* = "libGL.so.1"
@@ -21,16 +23,41 @@ when defined(useGlew):
   {.pragma: oglx, header: "<GL/glxew.h>".}
   {.pragma: wgl, header: "<GL/wglew.h>".}
   {.pragma: glu, dynlib: gludll.}
+
 elif defined(ios):
   {.pragma: ogl.}
   {.pragma: oglx.}
   {.passC: "-framework OpenGLES", passL: "-framework OpenGLES".}
+
 elif defined(android) or defined(js) or defined(emscripten) or defined(wasm):
   {.pragma: ogl.}
   {.pragma: oglx.}
+
+elif defined(openglUseSdl2Loader):
+  # use sdl2 loader if available, as it could leverage some system quirks
+  import sdl2
+
+  proc glGetProc*(name: cstring): pointer {.inline.} =
+    sdl2.glGetProcAddress(name)
+
+  # undocumented 'dynlib' feature: the string literal is replaced by
+  # the imported proc name:
+  {.pragma: ogl, dynlib: glGetProc("0").}
+  {.pragma: oglx, dynlib: glGetProc("0").}
+  {.pragma: wgl, dynlib: glGetProc("0").}
+  {.pragma: glu, dynlib: gluGetProc("").}
+
+  proc nimLoadProcs0() {.importc.}
+
+  template loadExtensions*() =
+    ## call this after your rendering context has been setup if you use
+    ## extensions.
+    bind nimLoadProcs0
+    nimLoadProcs0()
+
 else:
   # quite complex ... thanks to extension support for various platforms:
-  import dynlib
+  import std/dynlib
 
   let oglHandle = loadLib(ogldll)
   if isNil(oglHandle): quit("could not load: " & ogldll)

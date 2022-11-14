@@ -1,6 +1,8 @@
 # opengl
 An OpenGL interface
 
+This fork adds `-d:openglUseSdl2Loader` for SDL2 implemented OpenGL function prototype getting.
+
 # Extension loading
 ``loadExtensions()`` must be executed after the creation of a rendering context and before any OpenGL extension procs are used.
 
